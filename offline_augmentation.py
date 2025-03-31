@@ -83,6 +83,6 @@ if __name__ == '__main__':
     # Set the source directory (your original dataset) and the destination directory
     src_folder = "aligned_augmented"  # folder with original images and subfolders
     dst_folder = "aligned_augmented_resized"  # new folder for augmented images
-    num_augmentations = 5  # adjust the number of augmentations per image as needed
+    num_augmentations = 1  # adjust the number of augmentations per image as needed
 
     augment_and_save_images(src_folder, dst_folder, num_augmentations)
