@@ -57,6 +57,20 @@ def augment_image(image: Image.Image, num_examples: int = 5, final_resolution: t
     pipeline = get_augmentation_pipeline(final_resolution)
     return [pipeline(image) for _ in range(num_examples)]
 
+def augment_image_without_seed(image: Image.Image, final_resolution: tuple = (224, 224)):
+    """
+    Apply online augmentation to a single PIL image without setting a fixed random seed.
+    
+    Args:
+        image (PIL.Image.Image): The input image.
+        final_resolution (tuple): Desired final resolution (width, height) for output images.
+        
+    Returns:
+        torch.Tensor: An augmented image tensor.
+    """
+    pipeline = get_augmentation_pipeline(final_resolution)
+    return pipeline(image)
+
 # Example usage when running this file directly:
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

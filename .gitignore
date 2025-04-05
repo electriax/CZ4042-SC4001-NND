@@ -1,2 +1,4 @@
 *.pdf
 aligned_augmented_resized
+.pyc
+__pycache__
