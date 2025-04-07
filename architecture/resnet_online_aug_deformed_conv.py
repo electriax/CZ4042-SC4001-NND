@@ -184,7 +184,7 @@ def get_dataloaders(batch_size, train_folds, val_fold):
     if train_dataset.get_original_len() == 0 or len(val_dataset) == 0:
         return None
 
-    num_workers = 2 if cuda_avail else 0
+    num_workers = 4 if cuda_avail else 0
     pin_memory = True if cuda_avail else False
     # Create DataLoader for training and validation datasets
     # Use num_workers and pin_memory only if CUDA is available
