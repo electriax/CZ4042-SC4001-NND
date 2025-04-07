@@ -264,7 +264,7 @@ def train_model(model, dataloaders, optimizer, num_epochs=50, patience=10):
             all_preds, all_labels = [], []
 
             for inputs, labels in dataloaders[phase]:
-                minib_start = time.time()
+                # minib_start = time.time()
                 inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
                 optimizer.zero_grad()
 
@@ -281,8 +281,8 @@ def train_model(model, dataloaders, optimizer, num_epochs=50, patience=10):
                 running_corrects += torch.sum(preds == labels.data)
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
-                minib_time = time.time() - minib_start
-                print(f"Batch Time: {minib_time:.2f} seconds")
+                # minib_time = time.time() - minib_start
+                # print(f"Batch Time: {minib_time:.2f} seconds")
 
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
