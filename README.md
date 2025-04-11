@@ -10,14 +10,15 @@
   `conda create -n nnd python=3.10 -y`
     `pip install -r requirements.txt`
 
-  3. Relevant scripts
+  3. All relevant scripts are inside the architecture directory:
+
     1. resnet_online_aug_baseline.ipynb
     2. resnet_online_aug_34.ipynb
     3. resnet_online_aug_50.ipynb
     4. resnet_online_aug_crisscross_attention.py
     5. resnet_online_deformed_aug_conv.py 
 
-  4. To run the scripts, edit the filepath to either CURRENT_DIR or MAIN_FOLDER according to current directory.
+  5. To run the scripts, edit the filepath to either CURRENT_DIR or MAIN_FOLDER according to current directory.
     `OUTPUT_FOLDER = os.path.join(MAIN_FOLDER, 'aligned') ` 
     `FOLD_DATA = os.path.join(MAIN_FOLDER, 'fold_data') `
 
