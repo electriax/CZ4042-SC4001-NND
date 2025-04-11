@@ -1,4 +1,3 @@
-# %%
 import os
 import re
 import time
@@ -27,10 +26,6 @@ print("PyTorch Version: ",torch.__version__)
 print("Torchvision Version: ",torchvision.__version__)
 print(torch.cuda.is_available())
 
-# %% [markdown]
-# input dir
-
-# %%
 CURRENT_DIR = os.getcwd()
 MAIN_FOLDER = Path(CURRENT_DIR).parent
 OUTPUT_FOLDER = os.path.join(MAIN_FOLDER, 'aligned')  
@@ -39,7 +34,7 @@ FOLD_DATA = os.path.join(MAIN_FOLDER, 'fold_data')
 BATCH_SIZE = 64
 
 cuda_avail = torch.cuda.is_available()
-DEVICE = torch.device("cuda:0" if cuda_avail else "cpu")
+DEVICE = torch.device("cuda" if cuda_avail else "cpu")
 
 print(
     f"Current Directory: {CURRENT_DIR}\n",
@@ -48,8 +43,6 @@ print(
     f"Fold Data Folder: {FOLD_DATA}\n",
 )
 
-# %%
-# Data Transforms
 def get_data_transforms():
     normalize = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
 
@@ -73,7 +66,6 @@ def get_data_transforms():
 
 data_transforms = get_data_transforms()
 
-# %%
 class BasicImageDataset(Dataset):
     def __init__(self, image_paths, labels, transform=None, augment=False, num_augmentations=2):
         """
@@ -131,7 +123,6 @@ class BasicImageDataset(Dataset):
 
         return image, label
 
-# %%
 def load_folds_dataset(image_root, fold_dir, fold_files):
     image_paths = []
     labels = []
@@ -167,7 +158,6 @@ def load_folds_dataset(image_root, fold_dir, fold_files):
     return image_paths, labels
 
 
-# %%
 def get_dataloaders(batch_size, train_folds, val_fold):
     train_image_paths, train_labels = load_folds_dataset(OUTPUT_FOLDER, FOLD_DATA, train_folds)
     val_image_paths, val_labels = load_folds_dataset(OUTPUT_FOLDER, FOLD_DATA, [val_fold])
@@ -209,10 +199,7 @@ class LabelSmoothingCrossEntropy(nn.Module):
                 loss = loss.mean()
         return loss*self.eps/c + (1-self.eps) * F.nll_loss(log_preds, target, reduction=self.reduction)
 
-# %% [markdown]
-# Train
 
-# %%
 from utils.criss_cross_attention import CrissCrossAttention
 # Define the ResNet18 model with Criss-Cross Attention
 
@@ -232,10 +219,6 @@ class ResNetCCANet(nn.Module):
             base_model.layer3,
             base_model.layer4,
         )
-        
-        # # Freeze the parameters of the ResNet18 backbone
-        # for param in self.features.parameters():
-        #     param.requires_grad = False
             
         # Insert two cascaded Criss-Cross Attention modules (CCNet style)
         self.cc_attn = nn.Sequential(
@@ -266,7 +249,6 @@ def load_model(drop_rate=0.3):
     model = ResNetCCANet(drop_rate=drop_rate)
     return model.to(DEVICE)
 
-# %%
 def train_model(model, dataloaders, optimizer, num_epochs=50, patience=10):
     criterion = LabelSmoothingCrossEntropy()
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.25)
@@ -347,7 +329,6 @@ def train_model(model, dataloaders, optimizer, num_epochs=50, patience=10):
     return model, history
 
 
-# %%
 all_folds = [f"fold_{i}_data.txt" for i in range(5)]
 for fold_idx in range(5):
     val_fold = all_folds[fold_idx]
@@ -364,7 +345,6 @@ for fold_idx in range(5):
     best_val_acc = max(history['val_acc'])
     print(f"Best Validation Accuracy for fold {fold_idx}: {best_val_acc:.4f}")
 
-# %%
 # Save the model
 torch.save(model, 'resnet_crisscross.pth')
 # Save the history

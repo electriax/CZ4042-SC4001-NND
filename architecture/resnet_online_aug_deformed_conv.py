@@ -1,14 +1,9 @@
-# %%
 import os
-import re
 import time
 import copy
-import csv
 from pathlib import Path
-from collections import defaultdict, Counter
-import matplotlib.pyplot as plt
 from PIL import Image
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 import torch
 import torch.optim as optim
@@ -16,9 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-import seaborn as sns
 import torchvision
 from torchvision import models, datasets, transforms
+from torchvision.ops import DeformConv2d  # Requires torchvision >= 0.11
 
 # import online augmentation libraries
 from augmentation_libraries.online_augmentation import augment_image_without_seed
@@ -27,10 +22,7 @@ print("PyTorch Version: ",torch.__version__)
 print("Torchvision Version: ",torchvision.__version__)
 print(torch.cuda.is_available())
 
-# %% [markdown]
-# input dir
 
-# %%
 CURRENT_DIR = os.getcwd()
 MAIN_FOLDER = Path(CURRENT_DIR).parent
 OUTPUT_FOLDER = os.path.join(MAIN_FOLDER, 'aligned')  
@@ -48,11 +40,6 @@ print(
     f"Fold Data Folder: {FOLD_DATA}\n",
 )
 
-# %% [markdown]
-# Data processing
-
-# %%
-# Data Transforms
 def get_data_transforms():
     normalize = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
 
@@ -76,7 +63,6 @@ def get_data_transforms():
 
 data_transforms = get_data_transforms()
 
-# %%
 class BasicImageDataset(Dataset):
     def __init__(self, image_paths, labels, transform=None, augment=False, num_augmentations=2):
         """
@@ -134,7 +120,6 @@ class BasicImageDataset(Dataset):
 
         return image, label
 
-# %%
 def load_folds_dataset(image_root, fold_dir, fold_files):
     image_paths = []
     labels = []
@@ -170,7 +155,6 @@ def load_folds_dataset(image_root, fold_dir, fold_files):
     return image_paths, labels
 
 
-# %%
 def get_dataloaders(batch_size, train_folds, val_fold):
     train_image_paths, train_labels = load_folds_dataset(OUTPUT_FOLDER, FOLD_DATA, train_folds)
     val_image_paths, val_labels = load_folds_dataset(OUTPUT_FOLDER, FOLD_DATA, [val_fold])
@@ -194,47 +178,7 @@ def get_dataloaders(batch_size, train_folds, val_fold):
 
     return {'train': train_loader, 'val': val_loader}
 
-# %% [markdown]
-# model
 
-# %%
-
-
-# %%
-# class ResnetGender(nn.Module):
-#     def __init__(self, layers=18, pretrained=True, drop_rate=0.3):
-#         super().__init__()
-        
-#         if layers == 18:
-#             base_model = torchvision.models.resnet18(pretrained=pretrained)
-#             block_expansion = 1
-
-#         self.resnet = nn.Sequential(*list(base_model.children())[:-1]) 
-#         self.pool = nn.AdaptiveAvgPool2d((1, 1))  
-        
-#         self.extra_layer = nn.Sequential(
-#             nn.Linear(block_expansion * 512, 256),
-#             nn.BatchNorm1d(256),
-#             nn.Dropout(drop_rate),
-#             nn.ReLU(),
-#         )
-#         self.gender_predictor = nn.Sequential(
-#             nn.Linear(256, 128),
-#             nn.BatchNorm1d(128),
-#             nn.Dropout(drop_rate),
-#             nn.ReLU(),
-#             nn.Linear(128, 2)
-#         )
-
-#     def forward(self, x):
-#         x = self.resnet(x)
-#         x = self.pool(x)
-#         x = x.view(x.size(0), -1)
-#         x = self.extra_layer(x)
-#         return self.gender_predictor(x)
-
-
-# %%
 class LabelSmoothingCrossEntropy(nn.Module):
     def __init__(self, eps=0.1, reduction='mean'):
         super(LabelSmoothingCrossEntropy, self).__init__()
@@ -252,14 +196,6 @@ class LabelSmoothingCrossEntropy(nn.Module):
                 loss = loss.mean()
         return loss*self.eps/c + (1-self.eps) * F.nll_loss(log_preds, target, reduction=self.reduction)
 
-# %% [markdown]
-# Train
-
-# %%
-import torch
-import torch.nn as nn
-from torchvision.ops import DeformConv2d  # Requires torchvision >= 0.11
-from torchvision import models
 
 # Define a single deformable convolution layer that preserves input dimensions.
 class SingleDeformableLayer(nn.Module):
@@ -278,10 +214,6 @@ class SingleDeformableLayer(nn.Module):
 def load_model(drop_rate=0.3):
     # Load pretrained ResNet18
     base_model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-    
-    # Freeze all parameters in the ResNet backbone
-    for name, param in base_model.named_parameters():
-        param.requires_grad = False
 
     # Replace the fully connected (fc) layer with a new classifier.
     # These layers will be trainable.
