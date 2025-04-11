@@ -33,13 +33,13 @@ print(torch.cuda.is_available())
 # %%
 CURRENT_DIR = os.getcwd()
 MAIN_FOLDER = Path(CURRENT_DIR).parent
-OUTPUT_FOLDER = os.path.join(CURRENT_DIR, 'aligned')  
-FOLD_DATA = os.path.join(CURRENT_DIR, 'fold_data') 
+OUTPUT_FOLDER = os.path.join(MAIN_FOLDER, 'aligned')  
+FOLD_DATA = os.path.join(MAIN_FOLDER, 'fold_data') 
 
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 cuda_avail = torch.cuda.is_available()
-DEVICE = torch.device("cuda" if cuda_avail else "cpu")
+DEVICE = torch.device("cuda:0" if cuda_avail else "cpu")
 
 print(
     f"Current Directory: {CURRENT_DIR}\n",
@@ -48,9 +48,6 @@ print(
     f"Fold Data Folder: {FOLD_DATA}\n",
 )
 
-# %% [markdown]
-# Data processing
-
 # %%
 # Data Transforms
 def get_data_transforms():
@@ -58,17 +55,17 @@ def get_data_transforms():
 
     return {
         'train': transforms.Compose([
-            transforms.Resize((256, 256)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(*normalize)
         ]),
         'val': transforms.Compose([
-            transforms.Resize((256, 256)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(*normalize)
         ]),
         'test': transforms.Compose([
-            transforms.Resize((256, 256)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(*normalize)
         ]),
@@ -78,7 +75,7 @@ data_transforms = get_data_transforms()
 
 # %%
 class BasicImageDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None, augment=False, num_augmentations=5):
+    def __init__(self, image_paths, labels, transform=None, augment=False, num_augmentations=2):
         """
         Args:
             image_paths (list): List of image file paths.
@@ -184,7 +181,7 @@ def get_dataloaders(batch_size, train_folds, val_fold):
     if train_dataset.get_original_len() == 0 or len(val_dataset) == 0:
         return None
 
-    num_workers = 4 if cuda_avail else 0
+    num_workers = 8 if cuda_avail else 0
     pin_memory = True if cuda_avail else False
     # Create DataLoader for training and validation datasets
     # Use num_workers and pin_memory only if CUDA is available
@@ -194,47 +191,7 @@ def get_dataloaders(batch_size, train_folds, val_fold):
 
     return {'train': train_loader, 'val': val_loader}
 
-# %% [markdown]
-# model
 
-# %%
-
-
-# %%
-# class ResnetGender(nn.Module):
-#     def __init__(self, layers=18, pretrained=True, drop_rate=0.3):
-#         super().__init__()
-        
-#         if layers == 18:
-#             base_model = torchvision.models.resnet18(pretrained=pretrained)
-#             block_expansion = 1
-
-#         self.resnet = nn.Sequential(*list(base_model.children())[:-1]) 
-#         self.pool = nn.AdaptiveAvgPool2d((1, 1))  
-        
-#         self.extra_layer = nn.Sequential(
-#             nn.Linear(block_expansion * 512, 256),
-#             nn.BatchNorm1d(256),
-#             nn.Dropout(drop_rate),
-#             nn.ReLU(),
-#         )
-#         self.gender_predictor = nn.Sequential(
-#             nn.Linear(256, 128),
-#             nn.BatchNorm1d(128),
-#             nn.Dropout(drop_rate),
-#             nn.ReLU(),
-#             nn.Linear(128, 2)
-#         )
-
-#     def forward(self, x):
-#         x = self.resnet(x)
-#         x = self.pool(x)
-#         x = x.view(x.size(0), -1)
-#         x = self.extra_layer(x)
-#         return self.gender_predictor(x)
-
-
-# %%
 class LabelSmoothingCrossEntropy(nn.Module):
     def __init__(self, eps=0.1, reduction='mean'):
         super(LabelSmoothingCrossEntropy, self).__init__()
@@ -276,9 +233,9 @@ class ResNetCCANet(nn.Module):
             base_model.layer4,
         )
         
-        # Freeze the parameters of the ResNet18 backbone
-        for param in self.features.parameters():
-            param.requires_grad = False
+        # # Freeze the parameters of the ResNet18 backbone
+        # for param in self.features.parameters():
+        #     param.requires_grad = False
             
         # Insert two cascaded Criss-Cross Attention modules (CCNet style)
         self.cc_attn = nn.Sequential(
@@ -335,7 +292,6 @@ def train_model(model, dataloaders, optimizer, num_epochs=50, patience=10):
             all_preds, all_labels = [], []
 
             for inputs, labels in dataloaders[phase]:
-
                 inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
                 optimizer.zero_grad()
 
@@ -398,13 +354,13 @@ for fold_idx in range(5):
     train_folds = [f for i, f in enumerate(all_folds) if i != fold_idx]
     print(f"Fold {fold_idx}: Val = {val_fold}, Train = {train_folds}")
 
-    dataloaders = get_dataloaders(batch_size=32, train_folds=train_folds, val_fold=val_fold)
+    dataloaders = get_dataloaders(batch_size=64, train_folds=train_folds, val_fold=val_fold)
 
     model = load_model(drop_rate=0.3)
     params_to_update = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.Adam(params_to_update, lr=0.001)
 
-    model, history = train_model(model, dataloaders, optimizer, num_epochs=50, patience=15)
+    model, history = train_model(model, dataloaders, optimizer, num_epochs=50, patience=10)
     best_val_acc = max(history['val_acc'])
     print(f"Best Validation Accuracy for fold {fold_idx}: {best_val_acc:.4f}")
 
